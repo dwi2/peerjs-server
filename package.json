@@ -20,7 +20,9 @@
   "devDependencies": {
     "expect.js": "*",
     "sinon": "*",
-    "mocha": "*"
+    "mocha": "*",
+    "ws": "~0.4.25",
+    "proxyquire": "*"
   },
   "engines": {
     "node": ">=0.8"

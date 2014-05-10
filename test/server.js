@@ -1,12 +1,24 @@
-var PeerServer = require('../').PeerServer;
+var proxyquire = require('proxyquire');
+var WebSocket = require('ws');
 var expect = require('expect.js');
 var sinon = require('sinon');
+var PeerServer;
 
 describe('PeerServer', function() {
   describe('constructor', function() {
+    var initializeWSSStub, initializeHTTPStub;
+
     before(function() {
-      PeerServer.prototype._initializeWSS = sinon.stub();
-      PeerServer.prototype._initializeHTTP = sinon.stub();
+      PeerServer = require('../').PeerServer;
+      initializeWSSStub =
+        sinon.stub(PeerServer.prototype, '_initializeWSS');
+      initializeHTTPStub =
+        sinon.stub(PeerServer.prototype, '_initializeHTTP');
+    });
+
+    after(function() {
+      initializeWSSStub.restore();
+      initializeHTTPStub.restore();
     });
 
     it('should be able to be created without the `new` keyword', function() {
@@ -27,20 +39,50 @@ describe('PeerServer', function() {
   });
 
   describe('#_initializeWSS', function() {
-    WebSocketServer = sinon.stub();
+    var p;
+    var initializeHTTPStub;
+    var WebSocketServerStub;
+    var callbackSpy;
 
+    before(function() {
+      WebSocketServerStub = sinon.stub(WebSocket, 'Server');
+      callbackSpy = WebSocketServerStub.prototype.on = sinon.spy();
+      PeerServer =
+        proxyquire('../lib/server.js', {'ws': {Server: WebSocketServerStub}}).PeerServer;
+      initializeHTTPStub = sinon.stub(PeerServer.prototype, '_initializeHTTP');
+      p = new PeerServer({ port: 8000 });
+    });
+
+    after(function() {
+      initializeHTTPStub.restore();
+      WebSocket.Server.restore();
+    })
+
+    it('should create WebSocket server and accept connection', function() {
+      p._initializeWSS();
+      expect(WebSocketServerStub.called).to.be(true);
+      expect(callbackSpy.lastCall.args[0]).to.be('connection');
+      expect(typeof callbackSpy.lastCall.args[1]).to.be('function');
+    });
   });
 
-  describe('#_configureWS', function() {
+  describe.skip('#_configureWS', function() {
 
   });
 
   describe('#_checkKey', function() {
     var p;
+    var initializeHTTPStub;
+    PeerServer = require('../').PeerServer;
+
     before(function() {
-      PeerServer.prototype._initializeHTTP = sinon.stub();
+      initializeHTTPStub = sinon.stub(PeerServer.prototype, '_initializeHTTP');
       p = new PeerServer({ port: 8000 });
       p._checkKey('peerjs', 'myip', function() {});
+    });
+
+    after(function() {
+      initializeHTTPStub.restore();
     });
 
     it('should reject keys that are not the default', function(done) {
@@ -75,26 +117,29 @@ describe('PeerServer', function() {
 
   });
 
-  describe('#_initializeHTTP', function() {
+  describe.skip('#_initializeHTTP', function() {
 
   });
 
-  describe('#_startStreaming', function() {
+  describe.skip('#_startStreaming', function() {
 
   });
 
-  describe('#_pruneOutstanding', function() {
+  describe.skip('#_pruneOutstanding', function() {
 
   });
 
-  describe('#_processOutstanding', function() {
+  describe.skip('#_processOutstanding', function() {
 
   });
 
   describe('#_removePeer', function() {
     var p;
+    var initializeHTTPStub;
+    PeerServer = require('../').PeerServer;
+
     before(function() {
-      PeerServer.prototype._initializeHTTP = sinon.stub();
+      initializeHTTPStub = sinon.stub(PeerServer.prototype, '_initializeHTTP');
       p = new PeerServer({ port: 8000 });
 
       var fake = {ip: '0.0.0.0'};
@@ -102,6 +147,10 @@ describe('PeerServer', function() {
       p._clients['peerjs'] = {};
       p._clients['peerjs']['test'] = fake;
     });
+
+    after(function() {
+      initializeHTTPStub.restore();
+    })
 
     it('should decrement the number of ips being used and remove the connection', function() {
       expect(p._ips['0.0.0.0']).to.be(1);
@@ -115,10 +164,17 @@ describe('PeerServer', function() {
     var p;
     var KEY = 'peerjs';
     var ID = 'test';
+    var initializeHTTPStub;
+    PeerServer = require('../').PeerServer;
+
     before(function() {
-      PeerServer.prototype._initializeHTTP = sinon.stub();
+      initializeHTTPStub = sinon.stub(PeerServer.prototype, '_initializeHTTP');
       p = new PeerServer({ port: 8000 });
       p._clients[KEY] = {};
+    });
+
+    after(function() {
+      initializeHTTPStub.restore();
     });
 
     it('should send to the socket when appropriate', function() {
@@ -200,9 +256,16 @@ describe('PeerServer', function() {
 
   describe('#_generateClientId', function() {
     var p;
+    var initializeHTTPStub;
+    PeerServer = require('../').PeerServer;
+
     before(function() {
-      PeerServer.prototype._initializeHTTP = sinon.stub();
+      initializeHTTPStub = sinon.stub(PeerServer.prototype, '_initializeHTTP');
       p = new PeerServer({ port: 8000 });
+    });
+
+    after(function() {
+      initializeHTTPStub.restore();
     });
 
     it('should generate a 16-character ID', function() {
